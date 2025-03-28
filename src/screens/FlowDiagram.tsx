@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Button, IconButton, Stack, Typography } from "@mui/material";
+import React, { useState, useCallback } from "react";
+import { Box, Button, IconButton, Stack, Typography, Tooltip } from "@mui/material";
 import "reactflow/dist/style.css";
 import { useNavigate } from "react-router-dom";
 import ReactFlow, {
@@ -10,8 +10,9 @@ import ReactFlow, {
   MiniMap,
   useEdgesState,
   useNodesState,
+  Node,
 } from "reactflow";
-import { Save } from "@mui/icons-material";
+import { Save, Add, Delete, Edit, ContentCopy } from "@mui/icons-material";
 import SaveWorkflowModal from "../components/SaveWorkflowModal";
 
 const initialNodes = [
@@ -44,6 +45,7 @@ const FlowDiagram: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const navigate = useNavigate();
 
   const onConnect = (params: Connection) =>
@@ -54,15 +56,95 @@ const FlowDiagram: React.FC = () => {
   };
 
   const handleSaveClick = () => {
-    console.log("Save button clicked - modal should open");
     setSaveModalOpen(true);
   };
 
   const handleSaveConfirm = () => {
-    console.log("Save confirmed");
-    // Add your save logic here
     setSaveModalOpen(false);
   };
+
+  // Node manipulation functions using setNodes
+  const addNewNode = useCallback(() => {
+    const newNodeId = `${nodes.length + 1}`;
+    const lastNode = nodes[nodes.length - 1];
+    
+    setNodes((nds) => [
+      ...nds,
+      {
+        id: newNodeId,
+        type: "default",
+        data: { label: `Node ${newNodeId}` },
+        position: {
+          x: lastNode ? lastNode.position.x + 50 : 250,
+          y: lastNode ? lastNode.position.y + 100 : 50,
+        },
+      },
+    ]);
+  }, [nodes, setNodes]);
+
+  const deleteSelectedNode = useCallback(() => {
+    if (!selectedNode) return;
+    
+    setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id));
+    setEdges((eds) => 
+      eds.filter(
+        (edge) => 
+          edge.source !== selectedNode.id && edge.target !== selectedNode.id
+      )
+    );
+    setSelectedNode(null);
+  }, [selectedNode, setNodes, setEdges]);
+
+  const duplicateNode = useCallback(() => {
+    if (!selectedNode) return;
+    
+    const newNodeId = `${nodes.length + 1}`;
+    setNodes((nds) => [
+      ...nds,
+      {
+        ...selectedNode,
+        id: newNodeId,
+        position: {
+          x: selectedNode.position.x + 50,
+          y: selectedNode.position.y + 50,
+        },
+        data: {
+          ...selectedNode.data,
+          label: `${selectedNode.data.label} (copy)`,
+        },
+      },
+    ]);
+  }, [selectedNode, nodes.length, setNodes]);
+
+  const updateNodeLabel = useCallback(() => {
+    if (!selectedNode) return;
+    
+    const newLabel = prompt("Enter new label", selectedNode.data.label);
+    if (newLabel) {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === selectedNode.id) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                label: newLabel,
+              },
+            };
+          }
+          return node;
+        })
+      );
+    }
+  }, [selectedNode, setNodes]);
+
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node);
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
 
   return (
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -73,9 +155,9 @@ const FlowDiagram: React.FC = () => {
           backgroundColor: "background.paper",
           boxShadow: 1,
           zIndex: 10,
-          width: "220px",
-          position: "relative",
-          left: 20,
+          width: "100%",
+          display: "flex",
+          justifyContent: "space-between",
         }}
       >
         <Stack direction="row" spacing={1} alignItems="center">
@@ -105,16 +187,53 @@ const FlowDiagram: React.FC = () => {
           >
             Untitled
           </Typography>
-          <IconButton
-            color="primary"
-            onClick={handleSaveClick}
-            sx={{
-              "&:hover": { backgroundColor: "rgba(255, 255, 0, 0.1)" },
-              "&:active": { backgroundColor: "rgba(255, 255, 0, 0.2)" },
-            }}
-          >
-            <Save sx={{ backgroundColor: "yellow" }} />
-          </IconButton>
+        </Stack>
+        
+        <Stack direction="row" spacing={1}>
+          <Tooltip title="Add Node">
+            <IconButton onClick={addNewNode} color="primary">
+              <Add />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete Node">
+            <IconButton 
+              onClick={deleteSelectedNode} 
+              color="error"
+              disabled={!selectedNode}
+            >
+              <Delete />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Duplicate Node">
+            <IconButton 
+              onClick={duplicateNode} 
+              color="primary"
+              disabled={!selectedNode}
+            >
+              <ContentCopy />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Edit Node">
+            <IconButton 
+              onClick={updateNodeLabel} 
+              color="primary"
+              disabled={!selectedNode}
+            >
+              <Edit />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Save Workflow">
+            <IconButton
+              color="primary"
+              onClick={handleSaveClick}
+              sx={{
+                "&:hover": { backgroundColor: "rgba(255, 255, 0, 0.1)" },
+                "&:active": { backgroundColor: "rgba(255, 255, 0, 0.2)" },
+              }}
+            >
+              <Save sx={{ backgroundColor: "yellow" }} />
+            </IconButton>
+          </Tooltip>
         </Stack>
       </Box>
 
@@ -126,6 +245,8 @@ const FlowDiagram: React.FC = () => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
           fitView
         >
           <MiniMap />
@@ -144,13 +265,30 @@ const FlowDiagram: React.FC = () => {
         </ReactFlow>
       </Box>
 
-      {/* Save Workflow Modal - Must be at root level */}
+      {/* Node selection info */}
+      {selectedNode && (
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 20,
+            left: 20,
+            backgroundColor: "background.paper",
+            padding: 1,
+            borderRadius: 1,
+            boxShadow: 2,
+            zIndex: 10,
+          }}
+        >
+          <Typography variant="subtitle2">
+            Selected: {selectedNode.data.label}
+          </Typography>
+        </Box>
+      )}
+
+      {/* Save Workflow Modal */}
       <SaveWorkflowModal
         open={saveModalOpen}
-        onClose={() => {
-          console.log("Modal closed");
-          setSaveModalOpen(false);
-        }}
+        onClose={() => setSaveModalOpen(false)}
         onSave={handleSaveConfirm}
         label={"Save your Workflow"}
         label1={"Name"}

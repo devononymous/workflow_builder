@@ -141,7 +141,7 @@ const DataTable: React.FC<DataTableProps> = ({ onDeleteWorkflow }) => {
   }, []);
 
   const handlePageChange = useCallback(
-    (event: React.ChangeEvent<unknown>, value: number) => {
+    (_: React.ChangeEvent<unknown>, value: number) => {
       setPage(value);
     },
     []

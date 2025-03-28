@@ -41,7 +41,7 @@ const initialEdges = [
 ];
 
 const FlowDiagram: React.FC = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes,  onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const navigate = useNavigate();

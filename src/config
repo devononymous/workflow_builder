@@ -1,0 +1,10 @@
+https://builder.free.beeceptor.com
+
+
+
+Listening for HTTP and API requests...
+We have created a mocking rule which lists a bunch of todo tasks.
+Use the sample code snippets or the following CURL command to send a request.
+
+curl -v -X GET 'https://builder.free.beeceptor.com' -H 'some-header: some-value'
+(or click here to simulate in web-browser)

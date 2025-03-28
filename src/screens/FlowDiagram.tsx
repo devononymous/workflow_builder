@@ -138,7 +138,7 @@ const FlowDiagram: React.FC = () => {
     }
   }, [selectedNode, setNodes]);
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
   }, []);
 

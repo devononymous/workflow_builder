@@ -29,7 +29,7 @@ import {
   OAuthProvider,
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebaseConfig";
+import { auth } from "../FirebaseConfig";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");

@@ -3,7 +3,7 @@ import Login from './screens/Login';
 import Error from './components/Error';
 import Workflow from './screens/Workflow';
 import FlowDiagram from './screens/FlowDiagram';
-import { auth } from './firebaseConfig';
+import { auth } from './FirebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import Loading from './components/Loading';

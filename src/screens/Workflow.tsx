@@ -3,7 +3,7 @@ import { Box, IconButton, Typography, Paper } from '@mui/material';
 import DataTable from '../components/DataTable';
 import ConfirmationModal from '../components/ConfirmationModal'; // Import the modal component
 import "../App.css";
-import menu from "../assets/menu.svg";
+import menu from "../assets/Menu.svg";
 import menuHover from '../assets/menuHover.svg';
 interface Workflow {
   id: number;

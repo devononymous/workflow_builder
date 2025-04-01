@@ -6,8 +6,6 @@ import "../App.css";
 import menu from "../assets/Menu.svg";
 import menuHover from '../assets/menuHover.svg';
 interface Workflow {
-  name: ReactNode;
-  stats: any;
   id: number;
   workflowName: string;
   lastEditedOn: string;

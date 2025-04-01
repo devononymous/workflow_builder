@@ -22,14 +22,9 @@ const initialNodes = [
     data: { label: "Start" },
     position: { x: 250, y: 50 },
   },
+
   {
     id: "2",
-    type: "default",
-    data: { label: "Script" },
-    position: { x: 250, y: 150 },
-  },
-  {
-    id: "3",
     type: "output",
     data: { label: "End" },
     position: { x: 150, y: 250 },

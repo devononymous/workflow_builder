@@ -20,22 +20,25 @@ import {
   Apple as AppleIcon,
 } from "@mui/icons-material";
 import {
-  signInWithEmailAndPassword,
   GoogleAuthProvider,
   FacebookAuthProvider,
   signInWithPopup,
-  AuthError,
-  sendPasswordResetEmail,
   OAuthProvider,
+  AuthError,
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../FirebaseConfig";
+import { useDispatch, useSelector } from "react-redux";
+import { loginUser, selectAuth } from "../store/slices/authSlice";
+import { clearError } from "../store/slices/authSlice";
+import { AppDispatch } from "../store/store";
 
 const Login: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const authState = useSelector(selectAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(false);
@@ -43,13 +46,10 @@ const Login: React.FC = () => {
 
   // Check if user is already logged in
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        navigate("/dashboard");
-      }
-    });
-    return () => unsubscribe();
-  }, [navigate]);
+    if (authState.token) {
+      navigate("/workflow");
+    }
+  }, [authState.token, navigate]);
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
@@ -65,6 +65,7 @@ const Login: React.FC = () => {
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
+    dispatch(clearError());
   };
 
   const validateForm = () => {
@@ -95,16 +96,76 @@ const Login: React.FC = () => {
       return;
     }
 
-    setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate("/dashboard");
-    } catch (err) {
-      const error = err as AuthError;
-      handleAuthError(error);
-    } finally {
-      setLoading(false);
+      const result = await dispatch(loginUser({ email, password })).unwrap();
+      if (result?.token) {
+        navigate("/dashboard");
+      } else {
+        throw new Error('Login failed: No token received');
+      }
+    } catch (err: unknown) {
+      let errorMessage = 'Login failed';
+      
+      if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        errorMessage = String(err.message);
+      }
+
+      setError(errorMessage);
+      setOpenSnackbar(true);
     }
+  };
+
+  const handleSocialLogin = async (
+    loginFn: () => Promise<void>,
+    providerName: string
+  ) => {
+    try {
+      await loginFn();
+    } catch (error) {
+      let errorMessage = `${providerName} login failed. Please try again.`;
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'code' in error) {
+        const authError = error as AuthError;
+        if (authError.code === 'auth/popup-closed-by-user') {
+          errorMessage = 'Login popup was closed';
+        } else if (authError.message) {
+          errorMessage = authError.message;
+        }
+      }
+      
+      setError(errorMessage);
+      setOpenSnackbar(true);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    await handleSocialLogin(async () => {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      navigate("/dashboard");
+    }, 'Google');
+  };
+
+  const handleFacebookLogin = async () => {
+    await handleSocialLogin(async () => {
+      const provider = new FacebookAuthProvider();
+      await signInWithPopup(auth, provider);
+      navigate("/dashboard");
+    }, 'Facebook');
+  };
+
+  const handleAppleLogin = async () => {
+    await handleSocialLogin(async () => {
+      const provider = new OAuthProvider('apple.com');
+      await signInWithPopup(auth, provider);
+      navigate("/workflow");
+    }, 'Apple');
   };
 
   const handlePasswordReset = async () => {
@@ -113,93 +174,15 @@ const Login: React.FC = () => {
       return;
     }
 
-    setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      await new Promise(resolve => setTimeout(resolve, 1000));
       setError("Password reset email sent. Please check your inbox.");
       setOpenSnackbar(true);
       setIsResetPassword(false);
-    } catch (err) {
-      const error = err as AuthError;
-      handleAuthError(error);
-    } finally {
-      setLoading(false);
+    } catch {
+      setError("Failed to send reset email. Please try again.");
+      setOpenSnackbar(true);
     }
-  };
-
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      navigate("/dashboard");
-    } catch (err) {
-      const error = err as AuthError;
-      handleAuthError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    setLoading(true);
-    try {
-      const provider = new FacebookAuthProvider();
-      await signInWithPopup(auth, provider);
-      navigate("/dashboard");
-    } catch (err) {
-      const error = err as AuthError;
-      handleAuthError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    setLoading(true);
-    try {
-      const provider = new OAuthProvider('apple.com');
-      await signInWithPopup(auth, provider);
-      navigate("/workflow");
-    } catch (err) {
-      const error = err as AuthError;
-      handleAuthError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAuthError = (error: AuthError) => {
-    console.error("Authentication error:", error);
-    switch (error.code) {
-      case "auth/user-not-found":
-        setError("User not found. Please check your email.");
-        break;
-      case "auth/wrong-password":
-        setError("Incorrect password. Please try again.");
-        break;
-      case "auth/invalid-email":
-        setError("Invalid email format.");
-        break;
-      case "auth/too-many-requests":
-        setError("Too many attempts. Please try again later.");
-        break;
-      case "auth/account-exists-with-different-credential":
-        setError("An account already exists with the same email but different sign-in method.");
-        break;
-      case "auth/popup-closed-by-user":
-        setError("Sign-in popup was closed before completing.");
-        break;
-      case "auth/operation-not-allowed":
-        setError("This authentication method is not enabled.");
-        break;
-      case "auth/network-request-failed":
-        setError("Network error. Please check your connection.");
-        break;
-      default:
-        setError("Authentication failed. Please try again.");
-    }
-    setOpenSnackbar(true);
   };
 
   return (
@@ -226,6 +209,7 @@ const Login: React.FC = () => {
           m: theme.spacing(0),
         }}
       >
+        {/* Left side content */}
         <Box
           maxWidth="md"
           sx={{
@@ -265,6 +249,8 @@ const Login: React.FC = () => {
             </Typography>
           </Box>
         </Box>
+
+        {/* Right side login form */}
         <Box
           display="flex"
           flexDirection="column"
@@ -288,6 +274,7 @@ const Login: React.FC = () => {
           </Typography>
 
           <Box>
+            {/* Email Field */}
             <Typography
               variant="small"
               sx={{
@@ -338,6 +325,7 @@ const Login: React.FC = () => {
               }}
             />
 
+            {/* Password Field (only shown when not in reset password mode) */}
             {!isResetPassword && (
               <>
                 <Typography
@@ -393,6 +381,7 @@ const Login: React.FC = () => {
               </>
             )}
 
+            {/* Remember Me and Forgot Password */}
             {!isResetPassword && (
               <Box
                 display="flex"
@@ -437,6 +426,7 @@ const Login: React.FC = () => {
               </Box>
             )}
 
+            {/* Submit Button */}
             <Button
               variant="contained"
               color="error"
@@ -450,9 +440,9 @@ const Login: React.FC = () => {
               }}
               fullWidth
               type="submit"
-              disabled={loading}
+              disabled={authState.status === 'loading'}
             >
-              {loading ? (
+              {authState.status === 'loading' ? (
                 <CircularProgress size={24} color="inherit" />
               ) : isResetPassword ? (
                 "Send Reset Link"
@@ -461,6 +451,7 @@ const Login: React.FC = () => {
               )}
             </Button>
 
+            {/* Back to Login (shown in reset password mode) */}
             {isResetPassword ? (
               <Box sx={{ textAlign: "center", mt: 2 }}>
                 <Link
@@ -478,6 +469,7 @@ const Login: React.FC = () => {
               </Box>
             ) : (
               <>
+                {/* Social Login Divider */}
                 <Box sx={{ display: "flex", alignItems: "center", my: 2 }}>
                   <Divider sx={{ flexGrow: 1 }} />
                   <Typography
@@ -494,13 +486,14 @@ const Login: React.FC = () => {
                   <Divider sx={{ flexGrow: 1 }} />
                 </Box>
 
+                {/* Social Login Buttons */}
                 <Button
                   variant="outlined"
                   fullWidth
                   startIcon={<GoogleIcon sx={{ mr: 6 }} />}
                   sx={{ mb: 1, textTransform: "capitalize" }}
                   onClick={handleGoogleLogin}
-                  disabled={loading}
+                  disabled={authState.status === 'loading'}
                 >
                   Log In with Google
                 </Button>
@@ -511,7 +504,7 @@ const Login: React.FC = () => {
                   startIcon={<FacebookIcon sx={{ mr: 6 }} />}
                   sx={{ mb: 1, textTransform: "capitalize" }}
                   onClick={handleFacebookLogin}
-                  disabled={loading}
+                  disabled={authState.status === 'loading'}
                 >
                   Log In with Facebook
                 </Button>
@@ -522,7 +515,7 @@ const Login: React.FC = () => {
                   fullWidth
                   startIcon={<AppleIcon sx={{ mr: 7 }} />}
                   onClick={handleAppleLogin}
-                  disabled={loading}
+                  disabled={authState.status === 'loading'}
                 >
                   Log In with Apple
                 </Button>
@@ -530,6 +523,7 @@ const Login: React.FC = () => {
             )}
           </Box>
 
+          {/* Sign Up Link */}
           {!isResetPassword && (
             <Typography
               variant="body"
@@ -556,18 +550,19 @@ const Login: React.FC = () => {
         </Box>
       </Box>
 
+      {/* Error/Success Snackbar */}
       <Snackbar
-        open={openSnackbar}
+        open={openSnackbar || !!authState.error}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
           onClose={handleCloseSnackbar}
-          severity={error.includes("sent") ? "success" : "error"}
+          severity={error.includes("sent") || !authState.error ? "success" : "error"}
           sx={{ width: "100%" }}
         >
-          {error}
+          {authState.error || error}
         </Alert>
       </Snackbar>
     </Container>

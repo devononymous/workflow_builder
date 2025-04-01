@@ -1,13 +1,28 @@
 import { CircularProgress, Box } from '@mui/material';
 
-const Loading = () => {
+interface LoadingProps {
+  fullScreen?: boolean;
+}
+
+const Loading = ({ fullScreen = false }: LoadingProps) => {
   return (
-    <Box
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      minHeight="100vh"
-    >
+    <Box sx={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center',
+      ...(fullScreen && { 
+        width: '100vw',
+        height: '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        backgroundColor: 'background.paper',
+        zIndex: 9999 
+      }),
+      ...(!fullScreen && {
+        py: 4
+      })
+    }}>
       <CircularProgress />
     </Box>
   );

@@ -13,7 +13,6 @@ import TimelineDot from '@mui/lab/TimelineDot';
 import { RiPictureInPictureExitFill } from "react-icons/ri";
 import Button from "./Button";
 import ConfirmationModal from './ConfirmationModal';
-
 import {
   Table,
   TableBody,
@@ -176,7 +175,7 @@ const DataTable: React.FC<DataTableProps> = ({ onDeleteWorkflow }) => {
           </IconButton>
         </Box>
 
-        <Button onClick={() => navigate('/flow')}  // Corrected line
+        <Button onClick={() => navigate('/workflow/{id}')}  // Corrected line
           sx={{
             backgroundColor: theme.palette.primary.main,
             color: theme.palette.background.paper,
@@ -224,8 +223,7 @@ const DataTable: React.FC<DataTableProps> = ({ onDeleteWorkflow }) => {
                   isMediumScreen={isMediumScreen}
                   expandedRow={expandedRow}
                   onDownloadClick={handleDownloadClick}
-                  onDeleteClick={handleOpenDeleteModal}
-                />
+                  onDeleteClick={handleOpenDeleteModal} navigate={navigate}                />
               ))
             ) : (
               <TableRow>
@@ -273,6 +271,7 @@ interface WorkflowRowProps {
   expandedRow: number | null;
   onDownloadClick: (id: number) => void;
   onDeleteClick: (workflow: Workflow) => void;
+
 }
 
 const WorkflowRow = React.memo(({
@@ -281,8 +280,9 @@ const WorkflowRow = React.memo(({
   isMediumScreen,
   expandedRow,
   onDownloadClick,
-  onDeleteClick
-}: WorkflowRowProps) => {
+  onDeleteClick,
+  navigate
+}: WorkflowRowProps & { navigate: (path: string) => void }) => {
   return (
     <React.Fragment>
       <TableRow>
@@ -303,6 +303,7 @@ const WorkflowRow = React.memo(({
             onDownloadClick={onDownloadClick}
             expandedRow={expandedRow}
             onDeleteClick={onDeleteClick}
+            navigate={navigate} 
           />
         </TableCell>
       </TableRow>
@@ -322,6 +323,8 @@ interface ActionButtonsProps {
   onDownloadClick: (id: number) => void;
   expandedRow: number | null;
   onDeleteClick: (workflow: Workflow) => void;
+  navigate: (path: string) => void; 
+ 
 }
 
 const ActionButtons = React.memo(({
@@ -329,7 +332,8 @@ const ActionButtons = React.memo(({
   isSmallScreen,
   onDownloadClick,
   expandedRow,
-  onDeleteClick
+  onDeleteClick,
+  navigate
 }: ActionButtonsProps) => {
   const isExpanded = expandedRow === workflow.id;
 
@@ -348,7 +352,9 @@ const ActionButtons = React.memo(({
           <Button size="small" sx={{ minWidth: "auto" }}>
             Execute
           </Button>
-          <Button size="small" sx={{ minWidth: "auto" }}>
+          <Button
+       onClick={() => navigate(`/workflow/${workflow.id}`)}
+           size="small" sx={{ minWidth: "auto" }}>
             Edit
           </Button>
         </>
